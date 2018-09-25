@@ -6,3 +6,5 @@
 *.symvers
 *.order
 build/**
+.vscode/
+.DS_Store

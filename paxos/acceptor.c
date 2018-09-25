@@ -85,6 +85,7 @@ acceptor_receive_prepare(struct acceptor* a, paxos_prepare* req,
     acc.aid = a->id;
     acc.iid = req->iid;
     acc.ballot = req->ballot;
+    printk("Will ask the storage to save some more data - receive prepare");
     if (storage_put_record(&a->store, &acc) != 0) {
       storage_tx_abort(&a->store);
       return 0;
@@ -109,6 +110,7 @@ acceptor_receive_accept(struct acceptor* a, paxos_accept* req,
   int found = storage_get_record(&a->store, req->iid, &acc);
   if (!found || acc.ballot <= req->ballot) {
     paxos_accept_to_accepted(a->id, req, out);
+    printk("Will ask the storage to save some more data - receive accept");
     if (storage_put_record(&a->store, &(out->u.accepted)) != 0) {
       storage_tx_abort(&a->store);
       return 0;

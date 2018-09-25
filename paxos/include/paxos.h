@@ -55,7 +55,7 @@ extern "C"
   typedef enum
   {
     PAXOS_MEM_STORAGE = 0,
-    PAXOS_LMDB_STORAGE = 1
+    PAXOS_DISK_STORAGE = 1
   } paxos_storage_backend;
 
   /* Configuration */

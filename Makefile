@@ -3,6 +3,8 @@ paxos/carray.o \
 paxos/paxos.o \
 paxos/quorum.o \
 paxos/storage_mem.o \
+paxos/storage_disk.o \
+paxos/storage_device.o \
 paxos/storage_utils.o \
 paxos/storage.o \
 evpaxos/message.o \
@@ -74,15 +76,18 @@ C_COMP:= -std=c99
 G_COMP:= -std=gnu99
 USR_FLAGS:= -Wall -D user_space
 USR_SRCS := $(wildcard kpaxos/user_*.c)
+USR_SRCS_A := $(wildcard paxos/user_*.c)
 USR_CL := $(filter-out kpaxos/user_learner.c, $(USR_SRCS))
 USR_LEARN := $(filter-out kpaxos/user_client.c, $(USR_SRCS))
+USR_ACC := $(filter-out paxos/user_acceptor.c, $(USR_SRCS_A))
 USRC_OBJS := $(patsubst kpaxos/%.c, $(BUILD_DIR)/%.o, $(USR_CL))
 USRL_OBJS := $(patsubst kpaxos/%.c, $(BUILD_DIR)/%.o, $(USR_LEARN))
+USRA_OBJS := $(patsubst paxos/%.c, $(BUILD_DIR)/%.o, $(USR_ACC))
 
 EXTRA_CFLAGS:= -I$(PWD)/kpaxos/include -I$(PWD)/paxos/include -I$(PWD)/evpaxos/include -I$(HOME)/local/include
 ccflags-y:= $(G_COMP) -Wall -Wno-declaration-after-statement -Wframe-larger-than=3100 -O3
 
-all: $(BUILD_DIR) kernel_app user_client user_learner
+all: $(BUILD_DIR) kernel_app user_client user_learner user_acceptor
 
 kernel_app: $(BUILD_DIR_MAKEFILE)
 	make -C $(KDIR) M=$(BUILD_DIR) src=$(PWD) modules
@@ -103,6 +108,12 @@ user_client: $(USRC_OBJS)
 
 user_learner: $(USRL_OBJS)
 	$(CC) $(USR_FLAGS) $(EXTRA_CFLAGS) -o $(BUILD_DIR)/$@ $^
+
+$(BUILD_DIR)/%.o: paxos/%.c
+	$(CC) $(G_COMP) $(USR_FLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+
+user_acceptor: paxos/user_acceptor.c
+	$(CC) $(USR_FLAGS) $(EXTRA_CFLAGS) -g -o $(BUILD_DIR)/$@ $^
 
 ###########################################################################
 clean:
