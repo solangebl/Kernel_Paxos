@@ -54,16 +54,6 @@ disk_storage_new(int acceptor_id){
   memset(s->st, 0, MAX_SIZE * sizeof(struct store));
   s->trim_iid = 0;
 
-  /*
-  struct disk_storage_instance si;
-  si.instance_id = 50;
-  printk("Will save iid: %d", si.instance_id);
-  device_put(si);
-  // Wait until the data is saved to disk
-  wait_for_completion(&comp);
-  printk(KERN_INFO "Write woke me up, the data is safe in disk\n");
-  */
-
   return s;
 }
 
@@ -112,6 +102,12 @@ disk_storage_get(void* handle, iid_t iid, paxos_accepted* out)
   struct disk_storage* s = handle;
   int                 idx = iid % MAX_SIZE;
 
+  int test = device_get(idx);
+  if(test != 0){
+    //printk("Put returned with error, will have to wait");
+    return test;
+  }
+
   if (s->st[idx].msg.iid == iid) {
     memcpy(out, &s->st[idx].msg, sizeof(paxos_accepted));
     if (out->value.paxos_value_len > 0) {
@@ -131,18 +127,9 @@ disk_storage_put(void* handle, paxos_accepted* acc)
   struct disk_storage* s = handle;
   int                 idx = acc->iid % MAX_SIZE;
 
-  // TODO: remove -- obsolete
-  memcpy(&s->st[idx].msg, acc, sizeof(paxos_accepted));
-  if (s->st[idx].msg.value.paxos_value_len > sizeof(s->st[idx].data)) {
-    LOG_ERROR("Data will be truncated.");
-    s->st[idx].msg.value.paxos_value_len = sizeof(s->st[idx].data);
-  }
-  memcpy(s->st[idx].data, acc->value.paxos_value_val,
-         s->st[idx].msg.value.paxos_value_len);
-  // end obsolete
-
   struct disk_storage_instance si;
   si.instance_id = idx;
+
   memcpy(&si.st.msg, acc, sizeof(paxos_accepted));
   if (si.st.msg.value.paxos_value_len > sizeof(si.st.data)) {
     LOG_ERROR("Data will be truncated.");
@@ -154,12 +141,21 @@ disk_storage_put(void* handle, paxos_accepted* acc)
   printk("Will save iid: %d", si.instance_id);
   int test = device_put(si);
   if(test != 0){
-    printk("Put returned with error, will have to wait");
+    //printk("Put returned with error, will have to wait");
     return test;
   }
-  // Wait until the data is saved to disk
-  //wait_for_completion(&comp);
-  printk(KERN_INFO "Write woke me up, the data is safe in disk\n");
+
+  // TODO: remove -- obsolete
+  memcpy(&s->st[idx].msg, acc, sizeof(paxos_accepted));
+  if (s->st[idx].msg.value.paxos_value_len > sizeof(s->st[idx].data)) {
+    LOG_ERROR("Data will be truncated.");
+    s->st[idx].msg.value.paxos_value_len = sizeof(s->st[idx].data);
+  }
+  memcpy(s->st[idx].data, acc->value.paxos_value_val,
+         s->st[idx].msg.value.paxos_value_len);
+  // end obsolete
+  
+  printk(KERN_INFO "Saved data: %n\n", idx);
 
   return 0;
 }

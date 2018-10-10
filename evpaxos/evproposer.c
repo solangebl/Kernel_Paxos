@@ -67,6 +67,7 @@ proposer_preexecute(struct evproposer* p)
     proposer_prepare(p->state, &pr);
     peers_foreach_acceptor(p->peers, peer_send_prepare, &pr);
   }
+  printk("Proposer: Opened %d new instances", count);
   paxos_log_debug("Proposer: Opened %d new instances", count);
 }
 

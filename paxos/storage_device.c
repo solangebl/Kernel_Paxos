@@ -11,6 +11,7 @@ typedef struct requestData {
 
 static int majorNumberU;
 static int times = 0;
+static int times_written = 0;
 // The device-driver class struct pointer
 static struct device*    charDeviceU = NULL;
 static struct class* charClassU = NULL;
@@ -48,7 +49,7 @@ int dev_open(struct inode *ino,struct file *filp){
 ssize_t
 dev_read(struct file* filep, char* buffer, size_t len, loff_t* offset)
 {
-    printk(KERN_INFO "Entered to read what's available\n");
+    //printk(KERN_INFO "Entered to read what's available\n");
     int error_count;
 
     // to from len
@@ -69,19 +70,21 @@ dev_write(struct file *filp, const char *buff, size_t len, loff_t *off){
     int count;
 
     count = copy_from_user(localBuff, buff, bufferSize);
+    printk("Left to copy from user: %d\n", count);
     if(count==0){
-      Request *test_req = (Request *) localBuff;
-      
-      switch (test_req->type){
-          case 2:
-              printk(KERN_INFO "The data was successfully saved");
-              mutex_unlock(&char_mutex);
-              break;
-          default:
-              printk(KERN_INFO "Entered the default case");
-              break;
-      }
-      
+        Request *test_req = (Request *) localBuff;
+        
+        switch (test_req->type){
+            case 2:
+                times_written++;
+                printk("The device was written %d times\n", times_written);
+                mutex_unlock(&char_mutex);
+                break;
+            default:
+                printk(KERN_INFO "Entered the default case");
+                break;
+        }
+        
     }
     return count;
     
@@ -90,9 +93,9 @@ dev_write(struct file *filp, const char *buff, size_t len, loff_t *off){
 unsigned int
 dev_poll(struct file* file, poll_table* wait)
 {
-    LOG_INFO("User space app asking to poll\n");
+    //LOG_INFO("User space app asking to poll\n");
     if (doRequest == 1){
-        LOG_INFO("POLLIN available");
+        //LOG_INFO("POLLIN available");
         return POLLIN;
     }
     poll_wait(file, &access_wait_u, wait);
@@ -128,11 +131,12 @@ int
 device_put(struct disk_storage_instance s) {
 
   if(!mutex_trylock(&char_mutex)){
-    printk(KERN_INFO "Someone already asked for this. Wait!\n");
+    //printk(KERN_INFO "Someone already asked for this. Wait!\n");
     return -1;
   }
 
-  printk(KERN_INFO "Device put got instance id: %d \n", s.instance_id);
+  // printk(KERN_INFO "Got the lock\n");
+  // printk(KERN_INFO "Device put got instance id: %d \n", s.instance_id);
 
   user_request.type = 0;
   user_request.iid = s.instance_id;
@@ -141,14 +145,13 @@ device_put(struct disk_storage_instance s) {
   // set doRequest to 1
   doRequest = 1;
   wake_up(&access_wait_u);
-
   return SUCCESS;
 
 }
 
 struct disk_storage*
 device_get(void){
-  printk(KERN_INFO "Going to get what's been saved");
+  // printk(KERN_INFO "Going to get what's been saved");
 
   user_request.type = 1;
   doRequest = 1;

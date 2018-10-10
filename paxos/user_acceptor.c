@@ -8,10 +8,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <time.h>
 #include <sys/stat.h>
 
 #define TIMEOUT 10
 #define SUCCESS 0
+#define ACCEPTS_IN_FILE 200
 
 struct paxos_value
 {
@@ -53,6 +55,14 @@ stop_execution(int signo)
   stop = 1;
 }
 
+static char *file_name(int acc_iid){
+  int corresponding_file = acc_iid/ACCEPTS_IN_FILE;
+  char *file_name = (char *) malloc(sizeof("/tmp/acceptor_data/") + sizeof(corresponding_file) );
+  sprintf(file_name, "/tmp/acceptor_data/%d", corresponding_file);
+
+  return file_name;
+}
+
 /********************* DISK FUNCTIONS *************************/
 
 // effect: save data from buffer to file
@@ -62,17 +72,16 @@ save_data(void){
   
   FILE *fp;
   Request *test_req = (Request *) userBuff;
-  printf("Value ballot: %d\n", test_req->s.msg.value_ballot);
-  
-  char file_name[sizeof("/tmp/acceptor_data/") + sizeof(test_req->iid) ];
-  sprintf(file_name, "/tmp/acceptor_data/%d", test_req->iid);
-  printf("New file name: %s\n", file_name);
+
+  char *name = file_name(test_req->iid);
   // open file in append mode
-  fp = fopen(file_name, "wb");
+  fp = fopen(name, "wb");
   if(fp!=NULL){
-    printf("buffer size: %d\n", bufferSize);
+    long position = bufferSize*(test_req->iid%ACCEPTS_IN_FILE);
+    printf("The iid is: %d, will write to position %lu in file %s\n", test_req->iid, position, name);
+    fseek(fp, position, SEEK_SET);
     fwrite(test_req, bufferSize, 1, fp);
-    printf("File was written\n");
+    //printf("File was written\n");
     fclose(fp);
 
     return SUCCESS;
@@ -87,12 +96,15 @@ static int
 get_data(Request *req){
   
   FILE *fp;
+  char *name = file_name(req->iid);
 
+  /*
   char file_name[sizeof("/tmp/acceptor_data/") + sizeof(req->iid) ];
   sprintf(file_name, "/tmp/acceptor_data/%d", req->iid);
   printf("Will retrieve data from: %s\n", file_name);
+  */
   // open file in read mode
-  fp = fopen(file_name, "rb");
+  fp = fopen(name, "rb");
   if(fp!=NULL){
     fread(userBuff, bufferSize, 1, fp);
     printf("File was read\n");
@@ -149,6 +161,9 @@ write_file(size_t fd)
 }
 
 int main(int argc, char *argv[]){
+  // clock logging
+  clock_t start_t, end_t;
+  double total_t;
 
     size_t fd = open("/dev/kacc_u", O_RDWR);
 
@@ -192,21 +207,20 @@ int main(int argc, char *argv[]){
           // kernel asked to save data
           case 0:
           {
+            start_t = clock();
             int saved = save_data();
+            end_t = clock();
+            total_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+            printf("Total time taken to save data: %f\n", total_t  );
     
             if(saved==SUCCESS){
               // let the kernel know the data was saved
               printf("Data was saved\n");
-              // TODO: method to send back confirmation
               Request t_req;
               t_req.type = 2;
               int wr = write(fd, &t_req, sizeof(Request));
-              if(wr == 0){
-                printf("Nothing was written to char device");
-              }
-
-              if(wr == -1){
-                printf("There was an error writing to char device");
+              if(wr != 0){
+                printf("Error writing to char device");
               }
 
             }

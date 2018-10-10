@@ -71,6 +71,7 @@ send_paxos_prepare(struct net_device* dev, eth_address* addr, paxos_prepare* pp)
   paxos_message msg = { .type = PAXOS_PREPARE, .u.prepare = *pp };
 
   send_paxos_message(dev, addr, &msg);
+  printk("Proposer: Send prepare for iid %d ballot %d", pp->iid, pp->ballot);
   paxos_log_debug("Proposer: Send prepare for iid %d ballot %d", pp->iid,
                   pp->ballot);
 }
