@@ -28,6 +28,7 @@
 #include "storage.h"
 
 void
+//storage_init(struct storage* store, int acceptor_id, int* completed)
 storage_init(struct storage* store, int acceptor_id)
 {
   printk("Selected storage config: %d", paxos_config.storage_backend);

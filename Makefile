@@ -4,7 +4,7 @@ paxos/paxos.o \
 paxos/quorum.o \
 paxos/storage_mem.o \
 paxos/storage_disk.o \
-paxos/storage_device.o \
+paxos/disk_thread.o \
 paxos/storage_utils.o \
 paxos/storage.o \
 evpaxos/message.o \

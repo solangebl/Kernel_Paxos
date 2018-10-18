@@ -30,6 +30,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/delay.h>
 
 struct acceptor
 {
@@ -54,6 +55,7 @@ acceptor_new(int id)
     pfree(a);
     return NULL;
   }
+  
   if (storage_tx_begin(&a->store) != 0)
     return NULL;
   a->id = id;
@@ -85,7 +87,7 @@ acceptor_receive_prepare(struct acceptor* a, paxos_prepare* req,
     acc.aid = a->id;
     acc.iid = req->iid;
     acc.ballot = req->ballot;
-    //printk("Will ask the storage to save some more data - receive prepare");
+    printk("Will call put_record, a complete should follow");
     if (storage_put_record(&a->store, &acc) != 0) {
       storage_tx_abort(&a->store);
       return 0;
@@ -110,7 +112,7 @@ acceptor_receive_accept(struct acceptor* a, paxos_accept* req,
   int found = storage_get_record(&a->store, req->iid, &acc);
   if (!found || acc.ballot <= req->ballot) {
     paxos_accept_to_accepted(a->id, req, out);
-    //printk("Will ask the storage to save some more data - receive accept");
+    printk("Will call put_record, a complete should follow");
     if (storage_put_record(&a->store, &(out->u.accepted)) != 0) {
       storage_tx_abort(&a->store);
       return 0;

@@ -34,6 +34,7 @@ extern "C"
 #endif
 
 #include "paxos.h"
+#include <linux/completion.h>
 
   struct storage
   {
